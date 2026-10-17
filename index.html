@@ -557,12 +557,13 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
 
   /* ---------- Настройки: попълни имената тук ---------- */
   const CONFIG = {
-    herName: "",   // името на колежката, напр. "Мария"
-    myName: "",    // твоето име, напр. "Иван"
+    herName: "Виолета", // името ѝ, както стои в графата „До:“
+    herNick: "Вили",    // галеното име, с което я поздравява бележката
+    myName: "Християн", // от кого е поканата (в графата „От:“)
     whatsapp: "",  // по желание: номер за WhatsApp в международен формат, напр. "359888123456"
     email: "",     // по желание: имейл, на който да получиш отговора
   };
-  // Имената могат да се подадат и в линка: index.html?name=Мария&from=Иван
+  // Имената могат да се подадат и в линка: index.html?name=Виолета&nick=Вили&from=Иван
 
   const $ = (id) => document.getElementById(id);
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -572,6 +573,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
   const params = new URLSearchParams(location.search);
   const clean = (s) => (s || "").trim().slice(0, 40);
   const herName = clean(params.get("name")) || clean(CONFIG.herName);
+  const herNick = clean(params.get("nick")) || (params.get("name") ? "" : clean(CONFIG.herNick)) || herName;
   const myName = clean(params.get("from")) || clean(CONFIG.myName);
 
   const WD = ["неделя", "понеделник", "вторник", "сряда", "четвъртък", "петък", "събота"];
@@ -591,7 +593,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     { id: "surprise", icon: "🎁", name: "Изненада", hint: "Аз измислям, ти само идваш" },
   ];
   const NO_LINES = [
-    "Не", "Сигурна ли си?", "Помисли пак", "Грешен бутон", "Не уцели 😄",
+    "Не", herNick ? `${herNick}, сигурна ли си?` : "Сигурна ли си?", "Помисли пак", "Грешен бутон", "Не уцели 😄",
     "Опитай другия", "Хайде де…", "Почти!", "Бутонът е в отпуск", "Последен шанс…",
   ];
   const SUBJECT = { ask: "Покана за среща", accepted: "Покана за среща", plan: "Подробности за срещата", done: "Потвърждение на среща" };
@@ -622,7 +624,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
   $("regDate").textContent = `${pad(now0.getDate())}.${pad(now0.getMonth() + 1)}.${now0.getFullYear()}`;
   $("toName").textContent = herName || "теб";
   $("fromName").textContent = myName || "мен";
-  $("greet").textContent = herName ? `Здравей, ${herName}!` : "Здравей!";
+  $("greet").textContent = herNick ? `Здравей, ${herNick}!` : "Здравей!";
 
   function showStage(stage) {
     state.stage = stage;
