@@ -410,7 +410,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
 .toast { margin: 0; min-height: 1.5em; color: var(--ink); font-weight: 600; }
 .done-foot { margin-top: 18px; }
 
-.foot { max-width: 680px; margin: 18px auto 0; display: flex; justify-content: center; }
+.foot { max-width: 680px; margin: 18px auto 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 18px; }
+.test-badge { font-family: var(--mono); font-size: .78rem; color: var(--stamp); }
 .foot .link { font-size: .82rem; color: var(--muted); font-family: var(--mono); }
 
 .confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; }
@@ -533,7 +534,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     <p class="countdown" id="countdown"></p>
 
     <div class="send">
-      <p>Изпрати ми отговора, за да знам кога да те чакам 🙂</p>
+      <p id="sendIntro">Изпрати ми отговора, за да знам кога да те чакам 🙂</p>
       <pre class="msg" id="msgText" tabindex="0"></pre>
       <div class="send-actions">
         <button type="button" class="btn btn-yes" id="shareBtn">Изпрати ми отговора</button>
@@ -549,7 +550,10 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
   </section>
 </main>
 
-<footer class="foot"><button type="button" class="link" id="resetBtn" hidden>започни отначало</button></footer>
+<footer class="foot">
+  <span class="test-badge" id="testBadge" hidden>тестов режим · без известия</span>
+  <button type="button" class="link" id="resetBtn" hidden>започни отначало</button>
+</footer>
 
 <script>
 (() => {
@@ -562,8 +566,10 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     myName: "Християн", // от кого е поканата (в графата „От:“)
     whatsapp: "",  // по желание: номер за WhatsApp в международен формат, напр. "359888123456"
     email: "",     // по желание: имейл, на който да получиш отговора
+    notifyKey: "", // ключ от web3forms.com: получаваш имейл, когато тя отвори поканата, каже „Да“ и избере ден, час и място
   };
   // Имената могат да се подадат и в линка: index.html?name=Виолета&nick=Вили&from=Иван
+  // Добави ?test към линка, когато я пробваш сам: тогава не се пращат известия.
 
   const $ = (id) => document.getElementById(id);
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -575,6 +581,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
   const herName = clean(params.get("name")) || clean(CONFIG.herName);
   const herNick = clean(params.get("nick")) || (params.get("name") ? "" : clean(CONFIG.herNick)) || herName;
   const myName = clean(params.get("from")) || clean(CONFIG.myName);
+  const testMode = params.has("test");
 
   const WD = ["неделя", "понеделник", "вторник", "сряда", "четвъртък", "петък", "събота"];
   const WD_SHORT = ["нд", "пн", "вт", "ср", "чт", "пт", "сб"];
@@ -611,9 +618,30 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
 
   /* ---------- състояние (пази се само в този браузър) ---------- */
   const KEY = "pokana-za-sreshta-v1";
-  const state = { stage: "ask", tries: 0, day: null, time: null, timeCustom: false, place: null, customPlace: "", note: "" };
+  const state = { stage: "ask", tries: 0, day: null, time: null, timeCustom: false, place: null, customPlace: "", note: "", confirmed: false };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } };
+
+  /* ---------- известия по имейл (web3forms.com) ---------- */
+  const NOTIFY_URL = "https://api.web3forms.com/submit";
+  const notifyKey = CONFIG.notifyKey.trim();
+  const who = herNick || "Тя";
+
+  async function notify(subject, fields) {
+    if (!notifyKey || testMode) return false;
+    try {
+      const res = await fetch(NOTIFY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ access_key: notifyKey, subject, from_name: "Покана за излизане", ...fields }),
+        keepalive: true,
+      });
+      const data = await res.json().catch(() => ({}));
+      return res.ok && data.success !== false;
+    } catch (e) {
+      return false;
+    }
+  }
 
   const sheet = $("sheet");
   const yesBtn = $("yesBtn");
@@ -625,6 +653,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
   $("toName").textContent = herName || "теб";
   $("fromName").textContent = myName || "мен";
   $("greet").textContent = herNick ? `Здравей, ${herNick}!` : "Здравей!";
+  $("testBadge").hidden = !testMode;
 
   function showStage(stage) {
     state.stage = stage;
@@ -739,6 +768,10 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
       $("toPlan").focus({ preventScroll: true });
     }, reduceMotion ? 0 : 550);
     showStage("accepted");
+    notify(`${who} каза „Да“! 🎉`, {
+      "Какво стана": "Натисна „Да“ и сега избира ден, час и място.",
+      "Опити да натисне „Не“": String(state.tries),
+    });
   }
   yesBtn.addEventListener("click", accept);
 
@@ -898,11 +931,20 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
       restart($("missing"), "nudge");
       return;
     }
+    const firstTime = !state.confirmed;
+    state.confirmed = true;
     renderDone();
     showStage("done");
     stamp($("stampDone"));
     window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
     setTimeout(() => confetti(window.innerWidth / 2, window.innerHeight * 0.3), 250);
+
+    const fields = { "Ден": longDate(fromIso(state.day)), "Час": state.time, "Място": placeLabel() };
+    if (state.note.trim()) fields["Бележка"] = state.note.trim();
+    fields["Опити да натисне „Не“"] = String(state.tries);
+    notify(firstTime ? `${who} избра кога и къде 💌` : `${who} промени уговорката ✏️`, fields).then((ok) => {
+      if (ok) $("sendIntro").textContent = SEND_INTRO_RECEIVED;
+    });
   });
 
   /* ---------- потвърждение ---------- */
@@ -923,8 +965,11 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
   }
 
   const canShare = !framed && typeof navigator.share === "function";
+  const SEND_INTRO = "Изпрати ми отговора, за да знам кога да те чакам 🙂";
+  const SEND_INTRO_RECEIVED = "Отговорът ти вече пристигна при мен ✓ Ако искаш, прати ми го и в чата.";
 
   function renderDone() {
+    $("sendIntro").textContent = SEND_INTRO;
     $("dWhen").textContent = longDate(fromIso(state.day));
     $("dTime").textContent = state.time;
     $("dPlace").textContent = placeLabel();
@@ -1121,6 +1166,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     state.place = PLACES.some((p) => p.id === saved.place) ? saved.place : null;
     state.customPlace = typeof saved.customPlace === "string" ? saved.customPlace.slice(0, 80) : "";
     state.note = typeof saved.note === "string" ? saved.note.slice(0, 300) : "";
+    state.confirmed = saved.confirmed === true;
     state.stage = ["ask", "accepted", "plan", "done"].includes(saved.stage) ? saved.stage : "ask";
     if (state.stage === "ask") state.tries = 0;
   }
@@ -1142,6 +1188,23 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     validate();
   } else {
     showStage("ask");
+  }
+
+  // Известие при отваряне: най-много веднъж на 30 минути от един браузър.
+  const OPEN_KEY = "pokana-open-v1";
+  let lastOpen = 0;
+  try { lastOpen = Number(localStorage.getItem(OPEN_KEY)) || 0; } catch (e) {}
+  if (Date.now() - lastOpen > 30 * 60000) {
+    const where = {
+      ask: "Още не е отговорила.",
+      plan: "Вече каза „Да“, но още не е избрала ден, час и място.",
+      done: "Вече е избрала ден, час и място.",
+    }[state.stage] || "";
+    notify(lastOpen ? `${who} отвори поканата отново 👀` : `${who} отвори поканата 👀`, {
+      "Какво стана": `Отвори поканата. ${where}`.trim(),
+    }).then((ok) => {
+      if (ok) { try { localStorage.setItem(OPEN_KEY, String(Date.now())); } catch (e) {} }
+    });
   }
 })();
 </script>
