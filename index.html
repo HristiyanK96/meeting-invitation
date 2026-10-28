@@ -9,7 +9,7 @@
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💌</text></svg>">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>Покана за среща</title>
+<title>Покана за излизане</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Golos+Text:wght@400;500;600;800&family=PT+Mono&display=swap">
@@ -453,7 +453,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     <dl class="memo-meta">
       <div><dt>Рег. №</dt><dd>001 / <span id="regDate"></span></dd></div>
       <div><dt>До:</dt><dd class="filled" id="toName">теб</dd></div>
-      <div><dt>Относно:</dt><dd id="subject">Покана за среща</dd></div>
+      <div><dt>Относно:</dt><dd id="subject">Покана за излизане</dd></div>
       <div><dt>От:</dt><dd class="filled" id="fromName">мен</dd></div>
     </dl>
   </header>
@@ -462,7 +462,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
   <section class="step" id="s-ask">
     <p class="hand greet" id="greet">Здравей!</p>
     <p class="hand lead">Имам един важен въпрос към теб…</p>
-    <h1 class="question">Ще излезеш ли на среща с мен?</h1>
+    <h1 class="question">Ще излезеш ли с мен?</h1>
 
     <div class="answers" id="answers">
       <button type="button" class="btn btn-yes" id="yesBtn">Да, с удоволствие</button>
@@ -520,7 +520,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     <div class="done-head">
       <div>
         <p class="eyebrow">Потвърждение</p>
-        <h2 class="hand done-title">Имаме среща!</h2>
+        <h2 class="hand done-title">Уговорено!</h2>
       </div>
       <div class="stamp stamp-ok" id="stampDone" aria-hidden="true">Потвърдено</div>
     </div>
@@ -596,7 +596,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     "Не", herNick ? `${herNick}, сигурна ли си?` : "Сигурна ли си?", "Помисли пак", "Грешен бутон", "Не уцели 😄",
     "Опитай другия", "Хайде де…", "Почти!", "Бутонът е в отпуск", "Последен шанс…",
   ];
-  const SUBJECT = { ask: "Покана за среща", accepted: "Покана за среща", plan: "Подробности за срещата", done: "Потвърждение на среща" };
+  const SUBJECT = { ask: "Покана за излизане", accepted: "Покана за излизане", plan: "Ден, час и място", done: "Потвърждение" };
 
   const pad = (n) => String(n).padStart(2, "0");
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -634,6 +634,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     $("s-done").hidden = stage !== "done";
     $("resetBtn").hidden = stage === "ask";
     save();
+    if (stage === "done") updateCountdown();
   }
 
   function stamp(el) {
@@ -961,9 +962,9 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
       const d = Math.floor(mins / 1440);
       const h = Math.floor((mins % 1440) / 60);
       const m = mins % 60;
-      if (d > 0) text = `До срещата: ${plural(d, "ден", "дни")}${h ? " и " + plural(h, "час", "часа") : ""}`;
-      else if (h > 0) text = `До срещата: ${plural(h, "час", "часа")}${m ? " и " + plural(m, "минута", "минути") : ""}`;
-      else text = `До срещата: ${plural(m, "минута", "минути")}`;
+      if (d > 0) text = `Виждаме се след ${plural(d, "ден", "дни")}${h ? " и " + plural(h, "час", "часа") : ""}`;
+      else if (h > 0) text = `Виждаме се след ${plural(h, "час", "часа")}${m ? " и " + plural(m, "минута", "минути") : ""}`;
+      else text = `Виждаме се след ${plural(m, "минута", "минути")}`;
     }
     $("countdown").textContent = text;
   }
@@ -1012,7 +1013,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: .6; fo
     const ics = [
       "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//pokana//BG", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
       `UID:${Date.now()}@pokana`, `DTSTAMP:${dtstamp}`, `DTSTART:${f(start)}`, `DTEND:${f(end)}`,
-      `SUMMARY:${esc(myName ? `Среща с ${myName}` : "Среща")}`,
+      `SUMMARY:${esc(myName ? `Излизане с ${myName}` : "Излизане")}`,
       `LOCATION:${esc(placeLabel())}`,
       note ? `DESCRIPTION:${esc(note)}` : null,
       "END:VEVENT", "END:VCALENDAR",
